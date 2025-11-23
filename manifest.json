@@ -1,0 +1,9 @@
+{
+  "name": "Goldn MAX AI",
+  "short_name": "Goldn MAX",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#032b21",
+  "theme_color": "#f5d36b",
+  "icons": []
+}
