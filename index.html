@@ -12,28 +12,43 @@
 <div class="app-container">
     <header>
         <h1>Goldn MAX AI</h1>
+        <div id="status-bar">Loading local LLM engine…</div>
     </header>
 
     <div id="chat-window"></div>
 
-    <div class="input-container">
-        <input id="user-input" placeholder="Speak or type to Goldn MAX AI..." autocomplete="off" />
+    <div class="input-row">
+        <input id="user-input"
+               placeholder="Speak or type to Goldn MAX AI..."
+               autocomplete="off" />
+
         <button id="send-btn">Send</button>
-        <button id="voice-btn">🎤</button>
+        <button id="voice-btn" title="Voice input">🎤</button>
+
+        <!-- volume + mute + stop -->
+        <input id="volume-slider"
+               type="range"
+               min="0"
+               max="1"
+               step="0.01"
+               value="1"
+               title="Voice volume" />
+        <button id="mute-btn" title="Mute / unmute">🔊</button>
+        <button id="stop-voice-btn" title="Stop speaking">⛔</button>
     </div>
 </div>
 
 <script src="memory.js"></script>
-<script src="goldn-max-ai.js"></script>
+<script type="module" src="goldn-max-ai.js"></script>
 <script>
-// Register service worker for PWA/offline
-if ('serviceWorker' in navigator) {
-    window.addEventListener('load', function() {
-        navigator.serviceWorker.register('service-worker.js').catch(function(err){
-            console.log('Service worker registration failed:', err);
+    // Register service worker for PWA/offline shell
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function () {
+            navigator.serviceWorker.register('service-worker.js').catch(function (err) {
+                console.log('Service worker registration failed:', err);
+            });
         });
-    });
-}
+    }
 </script>
 </body>
 </html>
