@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Goldn MAX – Browser LLM</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", Arial, sans-serif;
+      background: #032b21;
+      color: #f5d36b;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .app {
+      width: 100%;
+      max-width: 960px;
+      height: 90vh;
+      box-sizing: border-box;
+      padding: 16px;
+    }
+    .card {
+      border-radius: 16px;
+      border: 2px solid #f5d36b;
+      background: rgba(0,0,0,0.4);
+      padding: 16px;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+    h1 {
+      text-align: center;
+      margin: 0 0 8px;
+      font-size: 24px;
+    }
+    #status {
+      font-size: 13px;
+      text-align: center;
+      margin-bottom: 8px;
+      color: #ffd97a;
+    }
+    #chat {
+      flex: 1;
+      background: #041e18;
+      border-radius: 12px;
+      padding: 10px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      font-size: 14px;
+    }
+    .input-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    #user-input {
+      flex: 1;
+      border-radius: 999px;
+      border: 1px solid #f5d36b;
+      padding: 12px;
+      font-size: 15px;
+      background: #041e18;
+      color: #f5d36b;
+      outline: none;
+    }
+    button {
+      border-radius: 999px;
+      border: none;
+      padding: 0 18px;
+      font-weight: 600;
+      font-size: 14px;
+      background: #f5d36b;
+      color: #032b21;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    button:disabled {
+      opacity: 0.5;
+      cursor: default;
+    }
+    @media (max-width: 600px) {
+      h1 { font-size: 20px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="card">
+      <h1>Goldn MAX – In-Browser LLM</h1>
+      <div id="status">Loading WebLLM engine…</div>
+      <div id="chat">Goldn MAX: Ask me something once the model says “ready”.</div>
+      <div class="input-row">
+        <input id="user-input" placeholder="Type to Goldn MAX…" autocomplete="off" />
+        <button id="send-btn" disabled>Send</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    // Import WebLLM directly from CDN
+    import { CreateMLCEngine } from "https://esm.run/@mlc-ai/web-llm";
+
+    const statusEl = document.getElementById("status");
+    const chatEl   = document.getElementById("chat");
+    const inputEl  = document.getElementById("user-input");
+    const sendBtn  = document.getElementById("send-btn");
+
+    // Use a small built-in model: Qwen2 0.5B (quantized for browser)
+    const MODEL_NAME = "Qwen2-0.5B-Instruct-q4f16_1-MLC";
+
+    let engine = null;
+    let busy = false;
+
+    // Conversation history
+    const messages = [
+      { role: "system", content: "You are Goldn MAX, a concise, helpful assistant." }
+    ];
+
+    function log(text) {
+      chatEl.textContent += "\\n" + text;
+      chatEl.scrollTop = chatEl.scrollHeight;
+    }
+
+    async function initEngine() {
+      try {
+        statusEl.textContent = "Downloading model (first time can take a few minutes)…";
+        engine = await CreateMLCEngine(MODEL_NAME, {
+          initProgressCallback: (p) => {
+            // p: { progress, text }
+            const pct = Math.round((p.progress || 0) * 100);
+            statusEl.textContent = (p.text || "Loading…") + " " + pct + "%";
+          }
+        });
+        statusEl.textContent = "Model ready ✔  (Qwen2 0.5B in your browser)";
+        sendBtn.disabled = false;
+      } catch (err) {
+        console.error(err);
+        statusEl.textContent = "Error loading model: " + err;
+      }
+    }
+
+    async function sendMessage() {
+      if (!engine || busy) return;
+      const text = inputEl.value.trim();
+      if (!text) return;
+
+      inputEl.value = "";
+      busy = true;
+      sendBtn.disabled = true;
+
+      // Show user message
+      log("\\nYou: " + text);
+      log("Goldn MAX: ");
+
+      messages.push({ role: "user", content: text });
+
+      try {
+        const chunks = await engine.chat.completions.create({
+          messages,
+          stream: true,
+          temperature: 0.7,
+        });
+
+        let reply = "";
+        for await (const chunk of chunks) {
+          const delta = chunk.choices?.[0]?.delta?.content || "";
+          if (delta) {
+            reply += delta;
+            chatEl.textContent += delta;
+            chatEl.scrollTop = chatEl.scrollHeight;
+          }
+        }
+        messages.push({ role: "assistant", content: reply });
+      } catch (err) {
+        console.error(err);
+        log("\\n[Error: " + err + "]");
+      } finally {
+        busy = false;
+        sendBtn.disabled = false;
+      }
+    }
+
+    sendBtn.addEventListener("click", sendMessage);
+    inputEl.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") sendMessage();
+    });
+
+    initEngine();
+  </script>
+</body>
+</html>
